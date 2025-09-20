@@ -1,0 +1,13 @@
+# rsysmetrics configuration file
+
+# Interval in seconds for collecting metrics.
+# Default: 15
+collect_interval = 15
+
+# Exporter configuration.
+# Here we configure the influxdb exporter.
+[exporter.influxdb]
+url = "http://localhost:8428"
+#token = "your-influxdb-token"
+bucket = "rsysmetrics"
+org = "your-org"

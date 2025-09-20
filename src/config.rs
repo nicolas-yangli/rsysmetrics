@@ -1,0 +1,26 @@
+use serde::Deserialize;
+
+#[derive(Deserialize, Debug)]
+pub struct Config {
+    #[serde(default = "default_collect_interval")]
+    pub collect_interval: u64,
+    pub exporter: Exporter,
+}
+
+#[derive(Deserialize, Debug)]
+pub enum Exporter {
+    #[serde(rename = "influxdb")]
+    InfluxDB(InfluxDBConfig),
+}
+
+#[derive(Deserialize, Debug)]
+pub struct InfluxDBConfig {
+    pub url: String,
+    pub token: Option<String>,
+    pub bucket: String,
+    pub org: String,
+}
+
+fn default_collect_interval() -> u64 {
+    15
+}
