@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{self, BufRead, BufReader};
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct CpuTimes {
     pub user: u64,
     pub nice: u64,
@@ -48,6 +48,10 @@ impl CpuTimesCollector {
     pub fn collect(&mut self) -> io::Result<HashMap<String, CpuTimes>> {
         let file = fs::File::open("/proc/stat")?;
         let reader = BufReader::new(file);
+        self.collect_from_reader(reader)
+    }
+
+    pub fn collect_from_reader<R: BufRead>(&mut self, reader: R) -> io::Result<HashMap<String, CpuTimes>> {
         let mut current_times = HashMap::new();
         let mut deltas = HashMap::new();
 
@@ -80,5 +84,64 @@ impl CpuTimesCollector {
 
         self.last_times = current_times;
         Ok(deltas)
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    const PROC_STAT_SAMPLE_1: &str = r#"cpu  62191 107 55994 16988691 15914 5073 2279 0 0 0
+cpu0 2676 4 3034 527276 942 280 670 0 0 0
+"#;
+
+    const PROC_STAT_SAMPLE_2: &str = r#"cpu  62291 107 56094 16989691 15914 5073 2279 0 0 0
+cpu0 2776 4 3134 527376 942 280 670 0 0 0
+"#;
+
+    #[test]
+    fn test_collect_from_reader() {
+        let mut collector = CpuTimesCollector::new();
+
+        // First collection, should return no deltas
+        let reader1 = BufReader::new(Cursor::new(PROC_STAT_SAMPLE_1));
+        let deltas1 = collector.collect_from_reader(reader1).unwrap();
+        assert!(deltas1.is_empty());
+
+        // Second collection, should return deltas
+        let reader2 = BufReader::new(Cursor::new(PROC_STAT_SAMPLE_2));
+        let deltas2 = collector.collect_from_reader(reader2).unwrap();
+        
+        assert_eq!(deltas2.len(), 2);
+
+        let expected_delta_cpu = CpuTimes {
+            user: 100,
+            nice: 0,
+            system: 100,
+            idle: 1000,
+            iowait: 0,
+            irq: 0,
+            softirq: 0,
+            steal: 0,
+            guest: 0,
+            guest_nice: 0,
+        };
+        assert_eq!(deltas2.get("cpu"), Some(&expected_delta_cpu));
+
+        let expected_delta_cpu0 = CpuTimes {
+            user: 100,
+            nice: 0,
+            system: 100,
+            idle: 100,
+            iowait: 0,
+            irq: 0,
+            softirq: 0,
+            steal: 0,
+            guest: 0,
+            guest_nice: 0,
+        };
+        assert_eq!(deltas2.get("cpu0"), Some(&expected_delta_cpu0));
     }
 }

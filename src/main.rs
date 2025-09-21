@@ -4,10 +4,12 @@ mod exporters;
 
 use crate::config::{Config, Exporter};
 use collectors::cpu::CpuCollector;
+use collectors::memory::MemoryCollector;
 use collectors::Collector;
 use reqwest::Client;
 use std::env;
 use std::fs;
+use sysinfo::System;
 use tokio::time::{self, Duration};
 
 #[tokio::main]
@@ -20,8 +22,17 @@ async fn main() {
     let config: Config = toml::from_str(&config_str).expect("Failed to parse config file");
     println!("Loaded config: {:#?}", config);
 
+    // Get hostname
+    let hostname = System::host_name().unwrap_or_else(|| {
+        eprintln!("Error: Could not determine hostname.");
+        std::process::exit(1);
+    });
+
     // Create collectors
-    let mut cpu_collector = CpuCollector::new();
+    let mut collectors: Vec<Box<dyn Collector>> = vec![
+        Box::new(CpuCollector::new()),
+        Box::new(MemoryCollector::new()),
+    ];
 
     // Create HTTP client
     let client = Client::new();
@@ -35,10 +46,11 @@ async fn main() {
 
     if oneshot {
         println!("Running in oneshot mode for testing. Metrics will be printed to the console.");
-        for i in 0..2 {
-            println!("\n--- Sample {} ---", i + 1);
-            interval.tick().await;
-            let metrics = cpu_collector.collect().await;
+        for _i in 0..2 {
+                        let mut metrics = Vec::new();
+                        for collector in &mut collectors {
+                            metrics.extend(collector.collect().await);
+                        }
             println!("Collected metrics: {:#?}", metrics);
         }
         println!("\nOneshot mode finished.");
@@ -46,11 +58,14 @@ async fn main() {
         println!("Running in continuous mode. Metrics will be exported to InfluxDB.");
         loop {
             interval.tick().await;
-            let metrics = cpu_collector.collect().await;
+            let mut metrics = Vec::new();
+            for collector in &mut collectors {
+                metrics.extend(collector.collect().await);
+            }
 
             match &config.exporter {
                 Exporter::InfluxDB(influx_config) => {
-                    let lines = exporters::influxdb::format_metrics(&metrics);
+                    let lines = exporters::influxdb::format_metrics(&metrics, &hostname);
                     if let Err(e) = exporters::influxdb::export_metrics(&client, influx_config, &lines).await {
                         eprintln!("[Error] Failed to export metrics: {:#?}", e);
                     }
