@@ -16,3 +16,4 @@ org = "your-org"
 cpu = true
 memory = true
 network = true
+disk = true

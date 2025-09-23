@@ -5,6 +5,7 @@ mod exporters;
 use crate::config::{Config, Exporter};
 use collectors::cpu::CpuCollector;
 use collectors::memory::MemoryCollector;
+use collectors::disk::DiskCollector;
 use collectors::network::NetworkCollector;
 use collectors::Collector;
 use reqwest::Client;
@@ -39,6 +40,9 @@ async fn main() {
     }
     if config.collectors.network {
         collectors.push(Box::new(NetworkCollector::new()));
+    }
+    if config.collectors.disk {
+        collectors.push(Box::new(DiskCollector::new()));
     }
 
     // Create HTTP client
