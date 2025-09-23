@@ -5,6 +5,7 @@ mod exporters;
 use crate::config::{Config, Exporter};
 use collectors::cpu::CpuCollector;
 use collectors::memory::MemoryCollector;
+use collectors::network::NetworkCollector;
 use collectors::Collector;
 use reqwest::Client;
 use std::env;
@@ -29,10 +30,16 @@ async fn main() {
     });
 
     // Create collectors
-    let mut collectors: Vec<Box<dyn Collector>> = vec![
-        Box::new(CpuCollector::new()),
-        Box::new(MemoryCollector::new()),
-    ];
+    let mut collectors: Vec<Box<dyn Collector>> = Vec::new();
+    if config.collectors.cpu {
+        collectors.push(Box::new(CpuCollector::new()));
+    }
+    if config.collectors.memory {
+        collectors.push(Box::new(MemoryCollector::new()));
+    }
+    if config.collectors.network {
+        collectors.push(Box::new(NetworkCollector::new()));
+    }
 
     // Create HTTP client
     let client = Client::new();
@@ -46,13 +53,17 @@ async fn main() {
 
     if oneshot {
         println!("Running in oneshot mode for testing. Metrics will be printed to the console.");
+        let mut metrics = Vec::new();
         for _i in 0..2 {
-                        let mut metrics = Vec::new();
-                        for collector in &mut collectors {
-                            metrics.extend(collector.collect().await);
-                        }
-            println!("Collected metrics: {:#?}", metrics);
+            metrics.clear();
+            for collector in &mut collectors {
+                metrics.extend(collector.collect().await);
+            }
+            if _i == 0 {
+                interval.tick().await;
+            }
         }
+        println!("Collected metrics: {:#?}", metrics);
         println!("\nOneshot mode finished.");
     } else {
         println!("Running in continuous mode. Metrics will be exported to InfluxDB.");

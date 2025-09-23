@@ -11,3 +11,8 @@ url = "http://localhost:8428"
 #token = "your-influxdb-token"
 bucket = "rsysmetrics"
 org = "your-org"
+
+[collectors]
+cpu = true
+memory = true
+network = true

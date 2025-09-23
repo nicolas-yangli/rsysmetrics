@@ -3,6 +3,7 @@ pub mod linux;
 
 pub mod cpu;
 pub mod memory;
+pub mod network;
 
 use async_trait::async_trait;
 
