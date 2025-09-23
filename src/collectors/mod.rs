@@ -5,6 +5,7 @@ pub mod cpu;
 pub mod memory;
 pub mod network;
 pub mod disk;
+pub mod system;
 
 use async_trait::async_trait;
 

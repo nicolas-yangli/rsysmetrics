@@ -19,6 +19,8 @@ pub struct Collectors {
     pub network: bool,
     #[serde(default = "default_true")]
     pub disk: bool,
+    #[serde(default = "default_true")]
+    pub system: bool,
 }
 
 fn default_true() -> bool {

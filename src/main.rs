@@ -7,6 +7,7 @@ use collectors::cpu::CpuCollector;
 use collectors::memory::MemoryCollector;
 use collectors::disk::DiskCollector;
 use collectors::network::NetworkCollector;
+use collectors::system::SystemCollector;
 use collectors::Collector;
 use reqwest::Client;
 use std::env;
@@ -43,6 +44,9 @@ async fn main() {
     }
     if config.collectors.disk {
         collectors.push(Box::new(DiskCollector::new()));
+    }
+    if config.collectors.system {
+        collectors.push(Box::new(SystemCollector::new()));
     }
 
     // Create HTTP client
