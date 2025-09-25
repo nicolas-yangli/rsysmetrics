@@ -8,6 +8,7 @@ use collectors::memory::MemoryCollector;
 use collectors::disk::DiskCollector;
 use collectors::network::NetworkCollector;
 use collectors::system::SystemCollector;
+use collectors::gpu::GpuCollector;
 use collectors::Collector;
 use reqwest::Client;
 use std::env;
@@ -47,6 +48,9 @@ async fn main() {
     }
     if config.collectors.system {
         collectors.push(Box::new(SystemCollector::new()));
+    }
+    if config.collectors.gpu {
+        collectors.push(Box::new(GpuCollector));
     }
 
     // Create HTTP client

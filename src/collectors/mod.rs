@@ -6,6 +6,7 @@ pub mod memory;
 pub mod network;
 pub mod disk;
 pub mod system;
+pub mod gpu;
 
 use async_trait::async_trait;
 
@@ -19,6 +20,7 @@ pub struct Metric {
 
 #[async_trait]
 pub trait Collector {
+    #[allow(dead_code)]
     fn name(&self) -> &str;
     async fn collect(&mut self) -> Vec<Metric>;
 }

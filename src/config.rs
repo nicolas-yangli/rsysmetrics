@@ -21,6 +21,8 @@ pub struct Collectors {
     pub disk: bool,
     #[serde(default = "default_true")]
     pub system: bool,
+    #[serde(default = "default_true")]
+    pub gpu: bool,
 }
 
 fn default_true() -> bool {

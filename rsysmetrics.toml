@@ -18,3 +18,4 @@ memory = true
 network = true
 disk = true
 system = true
+gpu = true
