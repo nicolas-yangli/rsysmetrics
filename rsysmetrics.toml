@@ -19,3 +19,15 @@ network = true
 disk = true
 system = true
 gpu = true
+
+[collectors.temperature]
+# The temperature collector can produce a large number of metrics, some of which may be invalid or useless.
+# It is recommended to run the agent in --oneshot mode first to see the generated metrics.
+# Then, use the include and exclude options to filter the metrics.
+enabled = false
+# Optional: glob patterns to include
+# include = ["k10temp*"]
+# Optional: glob patterns to exclude
+exclude = [
+    "amdgpu *", # provided by collector "gpu"
+]

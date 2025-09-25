@@ -8,6 +8,7 @@ use collectors::memory::MemoryCollector;
 use collectors::disk::DiskCollector;
 use collectors::network::NetworkCollector;
 use collectors::system::SystemCollector;
+use collectors::temperature::TemperatureCollector;
 use collectors::gpu::GpuCollector;
 use collectors::Collector;
 use reqwest::Client;
@@ -51,6 +52,11 @@ async fn main() {
     }
     if config.collectors.gpu {
         collectors.push(Box::new(GpuCollector));
+    }
+    if config.collectors.temperature.enabled {
+        collectors.push(Box::new(TemperatureCollector::new(
+            config.collectors.temperature.clone(),
+        )));
     }
 
     // Create HTTP client

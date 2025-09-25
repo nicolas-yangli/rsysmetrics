@@ -7,6 +7,7 @@ pub mod network;
 pub mod disk;
 pub mod system;
 pub mod gpu;
+pub mod temperature;
 
 use async_trait::async_trait;
 

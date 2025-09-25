@@ -23,6 +23,18 @@ pub struct Collectors {
     pub system: bool,
     #[serde(default = "default_true")]
     pub gpu: bool,
+    #[serde(default)]
+    pub temperature: TemperatureCollectorConfig,
+}
+
+#[derive(Deserialize, Debug, Default, Clone)]
+pub struct TemperatureCollectorConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub include: Vec<String>,
+    #[serde(default)]
+    pub exclude: Vec<String>,
 }
 
 fn default_true() -> bool {
