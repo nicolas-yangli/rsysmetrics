@@ -2,6 +2,11 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{self, BufRead, BufReader};
 use regex::Regex;
+use std::sync::LazyLock;
+
+static DEVICE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(nvme[0-9]+n[0-9]+|sd[a-z]+)$").unwrap()
+});
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct DiskIo {
@@ -85,7 +90,6 @@ impl DiskIoCollector {
     pub fn collect_from_reader<R: BufRead>(&mut self, reader: R, root_path: Option<&Path>) -> io::Result<HashMap<String, DiskIo>> {
         let mut current_io = HashMap::new();
         let mut deltas = HashMap::new();
-        let device_re = Regex::new(r"^(nvme[0-9]+n[0-9]+|sd[a-z]+)$").unwrap();
 
         for line in reader.lines() {
             let line = line?;
@@ -96,7 +100,7 @@ impl DiskIoCollector {
 
             let device_name = parts[2].to_string();
 
-            if !device_re.is_match(&device_name) {
+            if !DEVICE_RE.is_match(&device_name) {
                 continue;
             }
 
