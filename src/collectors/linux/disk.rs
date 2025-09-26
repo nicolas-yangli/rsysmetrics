@@ -85,7 +85,7 @@ impl DiskIoCollector {
     pub fn collect_from_reader<R: BufRead>(&mut self, reader: R, root_path: Option<&Path>) -> io::Result<HashMap<String, DiskIo>> {
         let mut current_io = HashMap::new();
         let mut deltas = HashMap::new();
-        let partition_re = Regex::new(r"(dm-[0-9]+|nvme[0-9]+n[0-9]+p[0-9]+|sd[a-z]+[0-9]+)").unwrap();
+        let device_re = Regex::new(r"^(nvme[0-9]+n[0-9]+|sd[a-z]+)$").unwrap();
 
         for line in reader.lines() {
             let line = line?;
@@ -96,7 +96,7 @@ impl DiskIoCollector {
 
             let device_name = parts[2].to_string();
 
-            if partition_re.is_match(&device_name) {
+            if !device_re.is_match(&device_name) {
                 continue;
             }
 
@@ -177,6 +177,9 @@ mod tests {
 253       0 dm-0 77669 0 6779496 25570 210960 0 7160456 155272 0 72779 193537 3691 0 52413048 12695 0 0
 8       0 sda 100 0 1000 0 100 0 1000 0 0 0 0
 8       1 sda1 10 0 100 0 10 0 100 0 0 0 0
+7       0 loop0 10 0 100 0 10 0 100 0 0 0 0
+240     16 zd16 10 0 100 0 10 0 100 0 0 0 0
+240     17 zd16p1 10 0 100 0 10 0 100 0 0 0 0
 "#;
 
     const PROC_DISKSTATS_SAMPLE_2: &str = r#"259       0 nvme0n1 77560 2503 6796613 23765 210848 619 7175916 2434865 0 66886 2481479 3691 0 52413048 14264 4799 8583
@@ -186,6 +189,9 @@ mod tests {
 253       0 dm-0 77671 0 6779560 25579 211446 0 7175904 155364 0 72803 193638 3691 0 52413048 12695 0 0
 8       0 sda 200 0 2000 0 200 0 2000 0 0 0 0
 8       1 sda1 20 0 200 0 20 0 200 0 0 0 0
+7       0 loop0 20 0 200 0 20 0 200 0 0 0 0
+240     16 zd16 20 0 200 0 20 0 200 0 0 0 0
+240     17 zd16p1 20 0 200 0 20 0 200 0 0 0 0
 "#;
 
     #[test]
