@@ -13,6 +13,7 @@ pub struct DiskIo {
     pub write_time: u64,
     pub io_in_progress: u64,
     pub disk_id: String,
+    pub temperature: Option<HashMap<String, f64>>,
 }
 
 impl std::ops::Sub for DiskIo {
@@ -28,6 +29,7 @@ impl std::ops::Sub for DiskIo {
             write_time: self.write_time.saturating_sub(other.write_time),
             io_in_progress: self.io_in_progress,
             disk_id: self.disk_id,
+            temperature: self.temperature,
         }
     }
 }
@@ -77,10 +79,10 @@ impl DiskIoCollector {
     pub fn collect(&mut self) -> io::Result<HashMap<String, DiskIo>> {
         let file = fs::File::open("/proc/diskstats")?;
         let reader = BufReader::new(file);
-        self.collect_from_reader(reader)
+        self.collect_from_reader(reader, None)
     }
 
-    pub fn collect_from_reader<R: BufRead>(&mut self, reader: R) -> io::Result<HashMap<String, DiskIo>> {
+    pub fn collect_from_reader<R: BufRead>(&mut self, reader: R, root_path: Option<&Path>) -> io::Result<HashMap<String, DiskIo>> {
         let mut current_io = HashMap::new();
         let mut deltas = HashMap::new();
         let partition_re = Regex::new(r"(dm-[0-9]+|nvme[0-9]+n[0-9]+p[0-9]+|sd[a-z]+[0-9]+)").unwrap();
@@ -107,6 +109,7 @@ impl DiskIoCollector {
             let io_in_progress = parts[11].parse().unwrap_or(0);
 
             let disk_id = self.device_to_id.get(&device_name).unwrap_or(&device_name).clone();
+            let temperature = self.get_disk_temperatures(&device_name, root_path).ok();
 
             let io = DiskIo {
                 read_bytes: read_sectors * 512,
@@ -117,6 +120,7 @@ impl DiskIoCollector {
                 write_time,
                 io_in_progress,
                 disk_id,
+                temperature,
             };
 
             if let Some(last) = self.last_io.get(&device_name) {
@@ -127,6 +131,37 @@ impl DiskIoCollector {
 
         self.last_io = current_io;
         Ok(deltas)
+    }
+
+    fn get_disk_temperatures(&self, device_name: &str, root_path: Option<&Path>) -> io::Result<HashMap<String, f64>> {
+        let device_path = root_path.unwrap_or_else(|| Path::new("/sys/class/block")).join(device_name).join("device");
+        let mut temperatures = HashMap::new();
+
+        for entry in fs::read_dir(device_path)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() && entry.file_name().to_string_lossy().starts_with("hwmon") {
+                for temp_entry in fs::read_dir(path)? {
+                    let temp_entry = temp_entry?;
+                    let temp_path = temp_entry.path();
+                    if let Some(file_name) = temp_path.file_name().and_then(|s| s.to_str()) {
+                        if file_name.starts_with("temp") && file_name.ends_with("_input") {
+                            let label_path = temp_path.with_file_name(file_name.replace("_input", "_label"));
+                            let label = fs::read_to_string(label_path)
+                                .unwrap_or_else(|_| "temp".to_string())
+                                .trim()
+                                .to_string();
+                            if let Ok(temp_str) = fs::read_to_string(&temp_path) {
+                                if let Ok(temp) = temp_str.trim().parse::<f64>() {
+                                    temperatures.insert(label, temp / 1000.0);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(temperatures)
     }
 }
 
@@ -160,16 +195,32 @@ mod tests {
         mapping.insert("sda".to_string(), "ata-VBOX_HARDDISK_VB0d1a2b3c-4d5e6f7a8b9c".to_string());
         let mut collector = DiskIoCollector::new_with_device_to_id_mapping(mapping);
 
+        // Create a mock sysfs directory
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mock_sysfs = temp_dir.path();
+        let device_path = mock_sysfs.join("nvme0n1").join("device");
+        fs::create_dir_all(&device_path).unwrap();
+        let hwmon_path = device_path.join("hwmon1");
+        fs::create_dir(&hwmon_path).unwrap();
+        fs::write(hwmon_path.join("temp1_input"), "36850").unwrap();
+        fs::write(hwmon_path.join("temp1_label"), "Composite").unwrap();
+        fs::write(hwmon_path.join("temp2_input"), "35850").unwrap();
+        fs::write(hwmon_path.join("temp2_label"), "Sensor 1").unwrap();
+
         // First collection, should return no deltas
         let reader1 = BufReader::new(Cursor::new(PROC_DISKSTATS_SAMPLE_1));
-        let deltas1 = collector.collect_from_reader(reader1).unwrap();
+        let deltas1 = collector.collect_from_reader(reader1, Some(mock_sysfs)).unwrap();
         assert!(deltas1.is_empty());
 
         // Second collection, should return deltas
         let reader2 = BufReader::new(Cursor::new(PROC_DISKSTATS_SAMPLE_2));
-        let deltas2 = collector.collect_from_reader(reader2).unwrap();
+        let deltas2 = collector.collect_from_reader(reader2, Some(mock_sysfs)).unwrap();
         
         assert_eq!(deltas2.len(), 3);
+
+        let mut expected_temps = HashMap::new();
+        expected_temps.insert("Composite".to_string(), 36.85);
+        expected_temps.insert("Sensor 1".to_string(), 35.85);
 
         let expected_delta_nvme0n1 = DiskIo {
             read_bytes: (6796613 - 6796549) * 512,
@@ -180,6 +231,7 @@ mod tests {
             write_time: 2434865 - 2434723,
             io_in_progress: 0,
             disk_id: "nvme-eui.0123456789abcdef".to_string(),
+            temperature: Some(expected_temps),
         };
         assert_eq!(deltas2.get("nvme0n1"), Some(&expected_delta_nvme0n1));
 
@@ -192,6 +244,7 @@ mod tests {
             write_time: 0,
             io_in_progress: 0,
             disk_id: "nvme1n1".to_string(),
+            temperature: None,
         };
         assert_eq!(deltas2.get("nvme1n1"), Some(&expected_delta_nvme1n1));
 
@@ -204,6 +257,7 @@ mod tests {
             write_time: 0,
             io_in_progress: 0,
             disk_id: "ata-VBOX_HARDDISK_VB0d1a2b3c-4d5e6f7a8b9c".to_string(),
+            temperature: None,
         };
         assert_eq!(deltas2.get("sda"), Some(&expected_delta_sda));
     }

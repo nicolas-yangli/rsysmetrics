@@ -42,6 +42,14 @@ impl Collector for DiskCollector {
                     metrics.push(Metric { name: "disk_read_time".to_string(), value: io.read_time as f64, tags: tags.clone() });
                     metrics.push(Metric { name: "disk_write_time".to_string(), value: io.write_time as f64, tags: tags.clone() });
                     metrics.push(Metric { name: "disk_io_in_progress".to_string(), value: io.io_in_progress as f64, tags: tags.clone() });
+
+                    if let Some(temperatures) = io.temperature {
+                        for (label, temp) in temperatures {
+                            let mut temp_tags = tags.clone();
+                            temp_tags.push(("label".to_string(), label));
+                            metrics.push(Metric { name: "disk_temperature".to_string(), value: temp, tags: temp_tags });
+                        }
+                    }
                 }
                 return metrics;
             }
