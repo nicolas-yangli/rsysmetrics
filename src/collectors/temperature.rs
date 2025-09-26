@@ -62,7 +62,7 @@ impl Collector for TemperatureCollector {
     }
 
     async fn collect(&mut self) -> Vec<Metric> {
-        self.components.refresh_list();
+        self.components.refresh(false);
         let mut metrics = Vec::new();
 
         for component in &self.components {
@@ -76,11 +76,15 @@ impl Collector for TemperatureCollector {
                 continue;
             }
 
-            metrics.push(Metric {
-                name: "temperature".to_string(),
-                value: component.temperature() as f64,
-                tags: vec![("component".to_string(), component_label.to_string())],
-            });
+            if let Some(temperature) = component.temperature() {
+                let mut tags = Vec::new();
+                tags.push(("label".to_string(), component.label().to_string()));
+                metrics.push(Metric {
+                    name: "temperature".to_string(),
+                    value: temperature as f64,
+                    tags,
+                });
+            }
         }
 
         metrics

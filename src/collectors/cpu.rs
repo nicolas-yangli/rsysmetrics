@@ -29,7 +29,7 @@ impl Collector for CpuCollector {
     }
 
     async fn collect(&mut self) -> Vec<Metric> {
-        self.system.refresh_cpu();
+        self.system.refresh_cpu_usage();
         let mut metrics = Vec::new();
 
         // Per-core usage (cross-platform)

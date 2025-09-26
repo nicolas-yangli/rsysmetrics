@@ -32,7 +32,7 @@ impl Collector for NetworkCollector {
     }
 
     async fn collect(&mut self) -> Vec<Metric> {
-        self.networks.refresh();
+        self.networks.refresh(false);
         let mut metrics = Vec::new();
 
         for (interface_name, data) in self.networks.iter() {
