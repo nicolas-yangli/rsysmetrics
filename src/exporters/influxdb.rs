@@ -2,6 +2,15 @@ use crate::collectors::Metric;
 use crate::config::InfluxDBConfig;
 use reqwest::Client;
 
+/// Escapes special characters in InfluxDB tag values.
+fn escape_tag_value(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace(' ', "\\ ")
+        .replace(',', "\\,")
+        .replace('=', "\\=")
+}
+
 /// Formats a slice of metrics into InfluxDB line protocol format.
 pub fn format_metrics(metrics: &[Metric], hostname: &str) -> String {
     if metrics.is_empty() {
@@ -22,7 +31,7 @@ pub fn format_metrics(metrics: &[Metric], hostname: &str) -> String {
         tags.sort_by(|a, b| a.0.cmp(&b.0));
         let tags_str = tags
             .iter()
-            .map(|(k, v)| format!( ",{}={}", k, v))
+            .map(|(k, v)| format!( ",{}={}", k, escape_tag_value(v)))
             .collect::<String>();
 
         if measurement == last_measurement && tags_str == last_tags {
@@ -132,6 +141,19 @@ mod tests {
 
         let formatted = format_metrics(&metrics, "test-host");
         let expected = "cpu,core=cpu0,host=test-host usage=0.5\nmemory,host=test-host total=1024\ncpu,core=cpu0,host=test-host temperature=60";
+        assert_eq!(formatted, expected);
+    }
+
+    #[test]
+    fn test_format_metrics_with_whitespace() {
+        let metrics = vec![Metric {
+            name: "cpu_usage".to_string(),
+            value: 0.5,
+            tags: vec![("core".to_string(), "cpu 0".to_string())],
+        }];
+
+        let formatted = format_metrics(&metrics, "test-host");
+        let expected = "cpu,core=cpu\\ 0,host=test-host usage=0.5";
         assert_eq!(formatted, expected);
     }
 }
