@@ -38,7 +38,7 @@ impl LinuxMemoryCollector {
         let mem_available = meminfo.get("MemAvailable").cloned().unwrap_or(0) as f64 * 1024.0;
         let buffers = meminfo.get("Buffers").cloned().unwrap_or(0) as f64 * 1024.0;
         let cached = meminfo.get("Cached").cloned().unwrap_or(0) as f64 * 1024.0;
-        let mem_used = mem_total - mem_free;
+        let mem_used = mem_total - mem_available;
 
         metrics.push(Metric { name: "memory_total".to_string(), value: mem_total, tags: vec![] });
         metrics.push(Metric { name: "memory_used".to_string(), value: mem_used, tags: vec![] });
@@ -198,7 +198,7 @@ DirectMap1G:    19922944 kB
         assert_eq!(memory_total.value, 32499764.0 * 1024.0);
 
         let memory_used = metrics.iter().find(|m| m.name == "memory_used").unwrap();
-        assert_eq!(memory_used.value, (32499764.0 - 21048968.0) * 1024.0);
+        assert_eq!(memory_used.value, (32499764.0 - 27735004.0) * 1024.0);
         
         let memory_available = metrics.iter().find(|m| m.name == "memory_available").unwrap();
         assert_eq!(memory_available.value, 27735004.0 * 1024.0);
