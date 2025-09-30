@@ -16,6 +16,21 @@ pub struct CpuTimes {
     pub guest_nice: u64,
 }
 
+impl CpuTimes {
+    pub fn total(&self) -> u64 {
+        self.user
+            + self.nice
+            + self.system
+            + self.idle
+            + self.iowait
+            + self.irq
+            + self.softirq
+            + self.steal
+            + self.guest
+            + self.guest_nice
+    }
+}
+
 impl std::ops::Sub for CpuTimes {
     type Output = Self;
 
@@ -32,6 +47,36 @@ impl std::ops::Sub for CpuTimes {
             guest: self.guest.saturating_sub(other.guest),
             guest_nice: self.guest_nice.saturating_sub(other.guest_nice),
         }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub struct CpuUsage {
+    pub user: f64,
+    pub system: f64,
+    pub idle: f64,
+    pub iowait: f64,
+    pub irq: f64,
+    pub softirq: f64,
+    pub steal: f64,
+    pub guest: f64,
+}
+
+pub fn normalize(times: CpuTimes) -> CpuUsage {
+    let total = times.total();
+    if total == 0 {
+        return CpuUsage::default();
+    }
+    let total = total as f64;
+    CpuUsage {
+        user: ((times.user + times.nice) as f64 / total) * 100.0,
+        system: (times.system as f64 / total) * 100.0,
+        idle: (times.idle as f64 / total) * 100.0,
+        iowait: (times.iowait as f64 / total) * 100.0,
+        irq: (times.irq as f64 / total) * 100.0,
+        softirq: (times.softirq as f64 / total) * 100.0,
+        steal: (times.steal as f64 / total) * 100.0,
+        guest: ((times.guest + times.guest_nice) as f64 / total) * 100.0,
     }
 }
 
@@ -143,5 +188,28 @@ cpu0 2776 4 3134 527376 942 280 670 0 0 0
             guest_nice: 0,
         };
         assert_eq!(deltas2.get("cpu0"), Some(&expected_delta_cpu0));
+    }
+
+    #[test]
+    fn test_normalize() {
+        let times = CpuTimes {
+            user: 100,
+            nice: 100,
+            system: 100,
+            idle: 600,
+            iowait: 0,
+            irq: 0,
+            softirq: 0,
+            steal: 0,
+            guest: 50,
+            guest_nice: 50,
+        };
+
+        let usage = normalize(times);
+
+        assert!((usage.user - 20.0).abs() < 1e-9);
+        assert!((usage.system - 10.0).abs() < 1e-9);
+        assert!((usage.idle - 60.0).abs() < 1e-9);
+        assert!((usage.guest - 10.0).abs() < 1e-9);
     }
 }

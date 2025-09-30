@@ -46,17 +46,16 @@ impl Collector for CpuCollector {
         {
             if let Ok(times_map) = self.times_collector.collect() {
                 for (cpu_name, times) in times_map {
+                    let usage = linux::cpu::normalize(times);
                     let tags = vec![("core".to_string(), cpu_name)];
-                    metrics.push(Metric { name: "cpu_time_user".to_string(), value: times.user as f64, tags: tags.clone() });
-                    metrics.push(Metric { name: "cpu_time_nice".to_string(), value: times.nice as f64, tags: tags.clone() });
-                    metrics.push(Metric { name: "cpu_time_system".to_string(), value: times.system as f64, tags: tags.clone() });
-                    metrics.push(Metric { name: "cpu_time_idle".to_string(), value: times.idle as f64, tags: tags.clone() });
-                    metrics.push(Metric { name: "cpu_time_iowait".to_string(), value: times.iowait as f64, tags: tags.clone() });
-                    metrics.push(Metric { name: "cpu_time_irq".to_string(), value: times.irq as f64, tags: tags.clone() });
-                    metrics.push(Metric { name: "cpu_time_softirq".to_string(), value: times.softirq as f64, tags: tags.clone() });
-                    metrics.push(Metric { name: "cpu_time_steal".to_string(), value: times.steal as f64, tags: tags.clone() });
-                    metrics.push(Metric { name: "cpu_time_guest".to_string(), value: times.guest as f64, tags: tags.clone() });
-                    metrics.push(Metric { name: "cpu_time_guest_nice".to_string(), value: times.guest_nice as f64, tags: tags.clone() });
+                    metrics.push(Metric { name: "cpu_usage_user".to_string(), value: usage.user, tags: tags.clone() });
+                    metrics.push(Metric { name: "cpu_usage_system".to_string(), value: usage.system, tags: tags.clone() });
+                    metrics.push(Metric { name: "cpu_usage_idle".to_string(), value: usage.idle, tags: tags.clone() });
+                    metrics.push(Metric { name: "cpu_usage_iowait".to_string(), value: usage.iowait, tags: tags.clone() });
+                    metrics.push(Metric { name: "cpu_usage_irq".to_string(), value: usage.irq, tags: tags.clone() });
+                    metrics.push(Metric { name: "cpu_usage_softirq".to_string(), value: usage.softirq, tags: tags.clone() });
+                    metrics.push(Metric { name: "cpu_usage_steal".to_string(), value: usage.steal, tags: tags.clone() });
+                    metrics.push(Metric { name: "cpu_usage_guest".to_string(), value: usage.guest, tags: tags.clone() });
                 }
             }
         }
