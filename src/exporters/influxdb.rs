@@ -12,7 +12,7 @@ fn escape_tag_value(value: &str) -> String {
 }
 
 /// Formats a slice of metrics into InfluxDB line protocol format.
-pub fn format_metrics(metrics: &[Metric], hostname: &str) -> String {
+pub fn format_metrics(metrics: &[Metric], hostname: &str, timestamp: u64) -> String {
     if metrics.is_empty() {
         return String::new();
     }
@@ -40,7 +40,7 @@ pub fn format_metrics(metrics: &[Metric], hostname: &str) -> String {
         } else {
             // New group, finalize previous line (if any) and start a new one
             if !current_line.is_empty() {
-                lines.push(current_line);
+                lines.push(format!("{} {}", current_line, timestamp));
             }
             current_line = format!(
                 "{measurement}{tags_str},host={} {}={}",
@@ -53,7 +53,7 @@ pub fn format_metrics(metrics: &[Metric], hostname: &str) -> String {
 
     // Push the last line
     if !current_line.is_empty() {
-        lines.push(current_line);
+        lines.push(format!("{} {}", current_line, timestamp));
     }
 
     lines.join("\n")
@@ -114,8 +114,8 @@ mod tests {
             },
         ];
 
-        let formatted = format_metrics(&metrics, "test-host");
-        let expected = "cpu,core=cpu0,host=test-host usage=0.5,temperature=60\nmemory,host=test-host total=1024,used=512";
+        let formatted = format_metrics(&metrics, "test-host", 1678886400);
+        let expected = "cpu,core=cpu0,host=test-host usage=0.5,temperature=60 1678886400\nmemory,host=test-host total=1024,used=512 1678886400";
         assert_eq!(formatted, expected);
     }
 
@@ -139,8 +139,8 @@ mod tests {
             },
         ];
 
-        let formatted = format_metrics(&metrics, "test-host");
-        let expected = "cpu,core=cpu0,host=test-host usage=0.5\nmemory,host=test-host total=1024\ncpu,core=cpu0,host=test-host temperature=60";
+        let formatted = format_metrics(&metrics, "test-host", 1678886400);
+        let expected = "cpu,core=cpu0,host=test-host usage=0.5 1678886400\nmemory,host=test-host total=1024 1678886400\ncpu,core=cpu0,host=test-host temperature=60 1678886400";
         assert_eq!(formatted, expected);
     }
 
@@ -152,8 +152,8 @@ mod tests {
             tags: vec![("core".to_string(), "cpu 0".to_string())],
         }];
 
-        let formatted = format_metrics(&metrics, "test-host");
-        let expected = "cpu,core=cpu\\ 0,host=test-host usage=0.5";
+        let formatted = format_metrics(&metrics, "test-host", 1678886400);
+        let expected = "cpu,core=cpu\\ 0,host=test-host usage=0.5 1678886400";
         assert_eq!(formatted, expected);
     }
 }

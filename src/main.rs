@@ -87,6 +87,10 @@ async fn main() {
         println!("Running in continuous mode. Metrics will be exported to InfluxDB.");
         loop {
             interval.tick().await;
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
             let mut metrics = Vec::new();
             for collector in &mut collectors {
                 metrics.extend(collector.collect().await);
@@ -94,7 +98,7 @@ async fn main() {
 
             match &config.exporter {
                 Exporter::InfluxDB(influx_config) => {
-                    let lines = exporters::influxdb::format_metrics(&metrics, &hostname);
+                    let lines = exporters::influxdb::format_metrics(&metrics, &hostname, now);
                     if let Err(e) = exporters::influxdb::export_metrics(&client, influx_config, &lines).await {
                         eprintln!("[Error] Failed to export metrics: {:#?}", e);
                     }
