@@ -12,18 +12,29 @@ use collectors::temperature::TemperatureCollector;
 use collectors::gpu::GpuCollector;
 use collectors::Collector;
 use reqwest::Client;
-use std::env;
+use clap::Parser;
 use std::fs;
 use sysinfo::System;
 use tokio::time::{self, Duration};
 
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    /// Sets a custom config file
+    #[arg(short, long, value_name = "FILE", default_value = "rsysmetrics.toml")]
+    config: String,
+
+    /// Run in oneshot mode
+    #[arg(long)]
+    oneshot: bool,
+}
+
 #[tokio::main]
 async fn main() {
-    // Check for --oneshot argument
-    let oneshot = env::args().any(|arg| arg == "--oneshot");
+    let cli = Cli::parse();
 
     // Load configuration
-    let config_str = fs::read_to_string("rsysmetrics.toml").expect("Failed to read config file");
+    let config_str = fs::read_to_string(cli.config).expect("Failed to read config file");
     let config: Config = toml::from_str(&config_str).expect("Failed to parse config file");
     println!("Loaded config: {:#?}", config);
 
@@ -69,7 +80,7 @@ async fn main() {
     // The first tick completes immediately, let's consume it
     interval.tick().await;
 
-    if oneshot {
+    if cli.oneshot {
         println!("Running in oneshot mode for testing. Metrics will be printed to the console.");
         let mut metrics = Vec::new();
         for _i in 0..2 {
