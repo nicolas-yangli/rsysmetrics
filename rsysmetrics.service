@@ -1,0 +1,20 @@
+[Unit]
+Description=rsysmetrics system metrics collection agent
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/rsysmetrics
+WorkingDirectory=/etc/rsysmetrics
+DynamicUser=yes
+User=rsysmetrics
+Group=rsysmetrics
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
