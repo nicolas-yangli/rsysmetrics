@@ -1,6 +1,6 @@
 # Project Overview
 
-`rsysmetrics` is a system metrics collection agent written in Rust. It gathers system metrics (currently CPU and memory) and exports them to InfluxDB. The agent is designed to be lightweight and configurable.
+`rsysmetrics` is a system metrics collection agent written in Rust. It gathers system metrics (currently CPU, memory, disk, GPU, network, system, and temperature) and exports them to InfluxDB. The agent is designed to be lightweight and configurable.
 
 ## Key Technologies
 
@@ -9,6 +9,7 @@
 *   **HTTP Client:** `reqwest` for sending metrics to InfluxDB.
 *   **Configuration:** `toml` for parsing the configuration file.
 *   **Async Runtime:** `tokio` for asynchronous operations.
+*   **Command-line Parsing:** `clap` for parsing command-line arguments.
 
 ## Architecture
 
@@ -48,7 +49,7 @@ cargo build --release
 
 ## Running
 
-To run the agent, you need a configuration file named `rsysmetrics.toml` in the same directory. See `rsysmetrics.toml` for an example configuration.
+To run the agent, you need a configuration file. You can specify the path to the configuration file using the `--config` or `-c` flag. If not specified, it will look for `rsysmetrics.toml` in the same directory. See `rsysmetrics.toml` for an example configuration.
 
 ```bash
 ./target/release/rsysmetrics
