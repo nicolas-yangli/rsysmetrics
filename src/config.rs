@@ -50,9 +50,14 @@ pub enum Exporter {
 #[derive(Deserialize, Debug)]
 pub struct InfluxDBConfig {
     pub url: String,
+    // V2 fields
+    pub bucket: Option<String>,
+    pub org: Option<String>,
     pub token: Option<String>,
-    pub bucket: String,
-    pub org: String,
+    // V1 fields
+    pub db: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
 }
 
 fn default_collect_interval() -> u64 {

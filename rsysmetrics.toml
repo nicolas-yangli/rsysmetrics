@@ -5,12 +5,25 @@
 collect_interval = 15
 
 # Exporter configuration.
-# Here we configure the influxdb exporter.
+# - Use `db` for InfluxDB v1 compatibility.
+# - Use `bucket` and `org` for InfluxDB v2 compatibility.
+# - Authentication is independent:
+#   - `token` is for InfluxDB v2 Token Auth.
+#   - `username` and `password` are for Basic Auth.
+#   - Token auth is prioritized if both are provided.
 [exporter.influxdb]
-url = "http://localhost:8428"
-#token = "your-influxdb-token"
-bucket = "rsysmetrics"
-org = "your-org"
+
+# --- Example for InfluxDB v1 / VictoriaMetrics ---
+url = "http://localhost:8428/write" # Note the full path
+db = "rsysmetrics"
+# username = "myuser"
+# password = "mypassword"
+
+# --- Example for InfluxDB v2 ---
+# url = "http://localhost:8086/api/v2/write" # Note the full path
+# bucket = "rsysmetrics"
+# org = "your-org"
+# token = "your-influxdb-token"
 
 [collectors]
 cpu = true

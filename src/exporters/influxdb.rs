@@ -65,21 +65,40 @@ pub async fn export_metrics(
     config: &InfluxDBConfig,
     lines: &str,
 ) -> Result<(), reqwest::Error> {
-    let url = format!("{}/api/v2/write", config.url);
+    let mut request_builder = client.post(&config.url);
 
-    let mut request_builder = client
-        .post(&url)
-        .query(&[("org", &config.org), ("bucket", &config.bucket), ("precision", &"s".to_string())])
-        .header("Content-Type", "text/plain; charset=utf-8")
-        .body(lines.to_string());
+    // Add query parameters additively
+    if let Some(db) = &config.db {
+        request_builder = request_builder.query(&[("db", db)]);
+    }
 
+    if let (Some(bucket), Some(org)) = (&config.bucket, &config.org) {
+        request_builder = request_builder.query(&[
+            ("bucket", bucket),
+            ("org", org),
+            ("precision", &"s".to_string()),
+        ]);
+    }
+
+    // Handle authentication independently
+    // Prioritize Token auth, then fall back to Basic auth.
     if let Some(token) = &config.token {
         if !token.is_empty() {
             request_builder = request_builder.header("Authorization", format!("Token {}", token));
         }
+    } else if let (Some(username), Some(password)) = (&config.username, &config.password) {
+        if !username.is_empty() {
+            request_builder = request_builder.basic_auth(username, Some(password));
+        }
     }
 
-    request_builder.send().await?.error_for_status()?;
+    // Build and send the request
+    request_builder
+        .header("Content-Type", "text/plain; charset=utf-8")
+        .body(lines.to_string())
+        .send()
+        .await?
+        .error_for_status()?;
 
     Ok(())
 }
