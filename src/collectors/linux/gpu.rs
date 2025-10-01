@@ -89,6 +89,14 @@ pub async fn collect_gpu_metrics() -> Vec<Metric> {
                                     collect_hwmon_metrics(&mut metrics, &hwmon_path, &tags);
                                 }
 
+                                if let Some(gpu_busy) = read_metric(&path.join("device/gpu_busy_percent")) {
+                                    metrics.push(Metric {
+                                        name: "gpu_usage".to_string(),
+                                        value: gpu_busy,
+                                        tags: tags.clone(),
+                                    });
+                                }
+
                                 if let Some(sclk) = read_metric(&path.join("device/pp_dpm_sclk")) {
                                     metrics.push(Metric {
                                         name: "gpu_core_clock".to_string(),
