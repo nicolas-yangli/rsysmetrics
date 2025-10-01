@@ -15,7 +15,7 @@ use reqwest::Client;
 use clap::Parser;
 use std::fs;
 use sysinfo::System;
-use tokio::time::{self, Duration};
+use tokio::time::{self, Duration, MissedTickBehavior};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -76,6 +76,7 @@ async fn main() {
     // Start the collection loop
     println!("Starting metrics collection...");
     let mut interval = time::interval(Duration::from_secs(config.collect_interval));
+    interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
 
     // The first tick completes immediately, let's consume it
     interval.tick().await;
