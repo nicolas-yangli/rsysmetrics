@@ -31,24 +31,62 @@ pub struct DiskIoCollector {
 use std::path::Path;
 
 impl DiskIoCollector {
+    fn select_best_id_from_vec(ids: &mut Vec<String>) -> String {
+        // A disk may have multiple device IDs. To ensure that the ID is consistent across
+        // runs, we sort the IDs and pick the best one.
+        ids.sort_unstable();
+
+        // We prefer more descriptive IDs. The scoring is as follows (lower is better):
+        // 0: WWN identifiers.
+        // 1: NVMe EUI identifiers.
+        // 2: Descriptive IDs for whole disks (e.g., ata-, scsi-, nvme-).
+        // 3: Others.
+        // 4: Partition IDs.
+        // Within the same score, the lexicographically first ID is chosen due to the sort.
+        let best_id = ids
+            .iter()
+            .min_by_key(|id| {
+                if id.contains("-part") {
+                    return 4;
+                }
+
+                if id.starts_with("wwn-") {
+                    0
+                } else if id.contains("eui.") {
+                    1
+                } else if id.starts_with("ata-") || id.starts_with("scsi-") || id.starts_with("nvme-") {
+                    2
+                } else {
+                    3
+                }
+            })
+            .unwrap(); // Safe to unwrap as ids is not empty.
+
+        best_id.clone()
+    }
+
     pub fn new() -> Self {
-        let mut device_to_id = HashMap::new();
+        let mut device_to_ids: HashMap<String, Vec<String>> = HashMap::new();
         if let Ok(entries) = fs::read_dir("/dev/disk/by-id/") {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let id_path = entry.path();
-                    if let Ok(target_path) = fs::read_link(&id_path) {
-                        if let Some(target_str) = target_path.to_str() {
-                            if let Some(device_name) = Path::new(target_str).file_name().and_then(|s| s.to_str()) {
-                                if let Some(id_str) = id_path.file_name().and_then(|s| s.to_str()) {
-                                    device_to_id.insert(device_name.to_string(), id_str.to_string());
-                                }
-                            }
+            for entry in entries.filter_map(Result::ok) {
+                let id_path = entry.path();
+                if let Ok(target_path) = fs::read_link(&id_path) {
+                    if let Some(device_name) = target_path.file_name().and_then(|s| s.to_str()) {
+                        if let Some(id_str) = id_path.file_name().and_then(|s| s.to_str()) {
+                            device_to_ids
+                                .entry(device_name.to_string())
+                                .or_default()
+                                .push(id_str.to_string());
                         }
                     }
                 }
             }
         }
+
+        let device_to_id = device_to_ids
+            .into_iter()
+            .map(|(device, mut ids)| (device, Self::select_best_id_from_vec(&mut ids)))
+            .collect();
 
         Self {
             device_to_id,
@@ -231,5 +269,60 @@ mod tests {
             temperature: None,
         };
         assert_eq!(result.get("sda"), Some(&expected_sda));
+    }
+
+    #[test]
+    fn test_select_best_id() {
+        // Test case 1: NVMe disk with different ID types - eui is preferred
+        let mut nvme_ids = vec![
+            "nvme-eui.0123456789abcdef".to_string(),
+            "nvme-Samsung_SSD_980_PRO_1TB_S6B0NS0R807218-part1".to_string(),
+            "nvme-Samsung_SSD_980_PRO_1TB_S6B0NS0R807218".to_string(),
+        ];
+        assert_eq!(
+            DiskIoCollector::select_best_id_from_vec(&mut nvme_ids),
+            "nvme-eui.0123456789abcdef"
+        );
+
+        // Test case 2: SATA disk with different ID types - wwn is preferred
+        let mut sata_ids = vec![
+            "wwn-0x5002538d40349353".to_string(),
+            "ata-VBOX_HARDDISK_VB0d1a2b3c-4d5e6f7a8b9c".to_string(),
+            "ata-VBOX_HARDDISK_VB0d1a2b3c-4d5e6f7a8b9c-part1".to_string(),
+        ];
+        assert_eq!(
+            DiskIoCollector::select_best_id_from_vec(&mut sata_ids),
+            "wwn-0x5002538d40349353"
+        );
+
+        // Test case 3: Only wwn and eui available - wwn is preferred
+        let mut other_ids = vec![
+            "wwn-0x5002538d40349353".to_string(),
+            "nvme-eui.0123456789abcdef".to_string(),
+        ];
+        assert_eq!(
+            DiskIoCollector::select_best_id_from_vec(&mut other_ids),
+            "wwn-0x5002538d40349353" // wwn (score 0) is better than eui (score 1)
+        );
+
+        // Test case 4: Only partition IDs
+        let mut partition_ids = vec![
+            "ata-VBOX_HARDDISK_VB0d1a2b3c-4d5e6f7a8b9c-part2".to_string(),
+            "ata-VBOX_HARDDISK_VB0d1a2b3c-4d5e6f7a8b9c-part1".to_string(),
+        ];
+        assert_eq!(
+            DiskIoCollector::select_best_id_from_vec(&mut partition_ids),
+            "ata-VBOX_HARDDISK_VB0d1a2b3c-4d5e6f7a8b9c-part1" // alphabetically first
+        );
+
+        // Test case 5: Partition ID vs. 'other' ID
+        let mut partition_vs_other_ids = vec![
+            "custom-id".to_string(),
+            "some-disk-part1".to_string(),
+        ];
+        assert_eq!(
+            DiskIoCollector::select_best_id_from_vec(&mut partition_vs_other_ids),
+            "custom-id" // 'other' (score 3) is better than partition (score 4)
+        );
     }
 }
