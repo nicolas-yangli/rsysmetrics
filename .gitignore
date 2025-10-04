@@ -1,2 +1,4 @@
 /target
 .gemini/
+/pkg
+*.pkg.tar.zst
