@@ -3,7 +3,7 @@
 # Run makepkg from the project root directory.
 pkgname=rsysmetrics-git
 _pkgname=rsysmetrics
-pkgver=r18.879733c
+pkgver=r27.717d96f
 pkgrel=1
 pkgdesc="A system metrics collection agent written in Rust (local development build)"
 arch=('x86_64')
@@ -11,6 +11,7 @@ url="https://github.com/nicolas-yangli/rsysmetrics"
 depends=()
 makedepends=('rust' 'cargo')
 backup=('etc/rsysmetrics/rsysmetrics.toml')
+options=(!strip)
 
 pkgver() {
     printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
