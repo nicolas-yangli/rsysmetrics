@@ -36,7 +36,6 @@ async fn main() {
     // Load configuration
     let config_str = fs::read_to_string(cli.config).expect("Failed to read config file");
     let config: Config = toml::from_str(&config_str).expect("Failed to parse config file");
-    println!("Loaded config: {:#?}", config);
 
     // Get hostname
     let hostname = System::host_name().unwrap_or_else(|| {
