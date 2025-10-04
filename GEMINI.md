@@ -33,6 +33,14 @@ Unit tests are located within the modules they are testing. To run the tests, us
 cargo test
 ```
 
+### Linting
+
+The project uses `clippy` to catch common mistakes and improve the code. To run clippy, use:
+
+```bash
+cargo clippy
+```
+
 ### Collector Implementation
 
 The `sysinfo` crate provides OS-independent implementations, but they often provide too few useful metrics. Therefore, we will always add a Linux-specific collector implementation if it provides more valuable metrics.
