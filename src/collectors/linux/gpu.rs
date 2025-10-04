@@ -19,7 +19,7 @@ fn find_hwmon_path(card_path: &Path) -> Option<PathBuf> {
     None
 }
 
-fn collect_hwmon_metrics(metrics: &mut Vec<Metric>, hwmon_path: &Path, tags: &Vec<(String, String)>) {
+fn collect_hwmon_metrics(metrics: &mut Vec<Metric>, hwmon_path: &Path, tags: &[(String, String)]) {
     if let Ok(entries) = fs::read_dir(hwmon_path) {
         for entry in entries.flatten() {
             let path = entry.path();
@@ -34,11 +34,11 @@ fn collect_hwmon_metrics(metrics: &mut Vec<Metric>, hwmon_path: &Path, tags: &Ve
                         metrics.push(Metric {
                             name: format!("gpu_temperature_{}", label),
                             value: value / 1000.0,
-                            tags: tags.clone(),
+                            tags: tags.to_owned(),
                         });
                     }
-                } else if file_name.starts_with("in") && file_name.ends_with("_input") {
-                    if let Some(value) = read_metric(&path) {
+                } else if file_name.starts_with("in") && file_name.ends_with("_input")
+                    && let Some(value) = read_metric(&path) {
                         let label_path = path.with_file_name(file_name.replace("_input", "_label"));
                         let label = fs::read_to_string(label_path).ok().map_or_else(
                             || "unknown".to_string(),
@@ -47,10 +47,9 @@ fn collect_hwmon_metrics(metrics: &mut Vec<Metric>, hwmon_path: &Path, tags: &Ve
                         metrics.push(Metric {
                             name: format!("gpu_voltage_{}", label),
                             value,
-                            tags: tags.clone(),
+                            tags: tags.to_owned(),
                         });
                     }
-                }
             }
         }
     }
@@ -59,7 +58,7 @@ fn collect_hwmon_metrics(metrics: &mut Vec<Metric>, hwmon_path: &Path, tags: &Ve
         metrics.push(Metric {
             name: "gpu_power_average".to_string(),
             value: value / 1_000_000.0,
-            tags: tags.clone(),
+            tags: tags.to_owned(),
         });
     }
 
@@ -67,7 +66,7 @@ fn collect_hwmon_metrics(metrics: &mut Vec<Metric>, hwmon_path: &Path, tags: &Ve
         metrics.push(Metric {
             name: "gpu_fan_speed".to_string(),
             value,
-            tags: tags.clone(),
+            tags: tags.to_owned(),
         });
     }
 }
@@ -77,12 +76,12 @@ pub async fn collect_gpu_metrics() -> Vec<Metric> {
     if let Ok(entries) = fs::read_dir("/sys/class/drm") {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.is_dir() {
-                if let Some(card_name) = path.file_name().and_then(|s| s.to_str()) {
-                    if card_name.starts_with("card") {
+            if path.is_dir()
+                && let Some(card_name) = path.file_name().and_then(|s| s.to_str())
+                    && card_name.starts_with("card") {
                         let vendor_path = path.join("device/vendor");
-                        if let Ok(vendor) = fs::read_to_string(vendor_path) {
-                            if vendor.trim() == "0x1002" {
+                        if let Ok(vendor) = fs::read_to_string(vendor_path)
+                            && vendor.trim() == "0x1002" {
                                 let tags = vec![("card".to_string(), card_name.to_string())];
 
                                 if let Some(hwmon_path) = find_hwmon_path(&path) {
@@ -145,10 +144,7 @@ pub async fn collect_gpu_metrics() -> Vec<Metric> {
                                     });
                                 }
                             }
-                        }
                     }
-                }
-            }
         }
     }
     metrics

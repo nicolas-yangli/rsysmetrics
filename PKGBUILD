@@ -3,7 +3,7 @@
 # Run makepkg from the project root directory.
 pkgname=rsysmetrics-git
 _pkgname=rsysmetrics
-pkgver=r27.717d96f
+pkgver=r29.0b05a68
 pkgrel=1
 pkgdesc="A system metrics collection agent written in Rust (local development build)"
 arch=('x86_64')

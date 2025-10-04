@@ -31,7 +31,7 @@ pub struct DiskIoCollector {
 use std::path::Path;
 
 impl DiskIoCollector {
-    fn select_best_id_from_vec(ids: &mut Vec<String>) -> String {
+    fn select_best_id_from_vec(ids: &mut [String]) -> String {
         // A disk may have multiple device IDs. To ensure that the ID is consistent across
         // runs, we sort the IDs and pick the best one.
         ids.sort_unstable();
@@ -70,16 +70,14 @@ impl DiskIoCollector {
         if let Ok(entries) = fs::read_dir("/dev/disk/by-id/") {
             for entry in entries.filter_map(Result::ok) {
                 let id_path = entry.path();
-                if let Ok(target_path) = fs::read_link(&id_path) {
-                    if let Some(device_name) = target_path.file_name().and_then(|s| s.to_str()) {
-                        if let Some(id_str) = id_path.file_name().and_then(|s| s.to_str()) {
+                if let Ok(target_path) = fs::read_link(&id_path)
+                    && let Some(device_name) = target_path.file_name().and_then(|s| s.to_str())
+                        && let Some(id_str) = id_path.file_name().and_then(|s| s.to_str()) {
                             device_to_ids
                                 .entry(device_name.to_string())
                                 .or_default()
                                 .push(id_str.to_string());
                         }
-                    }
-                }
             }
         }
 
@@ -162,20 +160,18 @@ impl DiskIoCollector {
                 for temp_entry in fs::read_dir(path)? {
                     let temp_entry = temp_entry?;
                     let temp_path = temp_entry.path();
-                    if let Some(file_name) = temp_path.file_name().and_then(|s| s.to_str()) {
-                        if file_name.starts_with("temp") && file_name.ends_with("_input") {
+                    if let Some(file_name) = temp_path.file_name().and_then(|s| s.to_str())
+                        && file_name.starts_with("temp") && file_name.ends_with("_input") {
                             let label_path = temp_path.with_file_name(file_name.replace("_input", "_label"));
                             let label = fs::read_to_string(label_path)
                                 .unwrap_or_else(|_| "temp".to_string())
                                 .trim()
                                 .to_string();
-                            if let Ok(temp_str) = fs::read_to_string(&temp_path) {
-                                if let Ok(temp) = temp_str.trim().parse::<f64>() {
+                            if let Ok(temp_str) = fs::read_to_string(&temp_path)
+                                && let Ok(temp) = temp_str.trim().parse::<f64>() {
                                     temperatures.insert(label, temp / 1000.0);
                                 }
-                            }
                         }
-                    }
                 }
             }
         }

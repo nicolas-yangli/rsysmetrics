@@ -86,11 +86,10 @@ pub async fn export_metrics(
         if !token.is_empty() {
             request_builder = request_builder.header("Authorization", format!("Token {}", token));
         }
-    } else if let (Some(username), Some(password)) = (&config.username, &config.password) {
-        if !username.is_empty() {
+    } else if let (Some(username), Some(password)) = (&config.username, &config.password)
+        && !username.is_empty() {
             request_builder = request_builder.basic_auth(username, Some(password));
         }
-    }
 
     // Build and send the request
     request_builder

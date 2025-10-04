@@ -77,8 +77,7 @@ impl Collector for TemperatureCollector {
             }
 
             if let Some(temperature) = component.temperature() {
-                let mut tags = Vec::new();
-                tags.push(("label".to_string(), component.label().to_string()));
+                let tags = vec![("label".to_string(), component.label().to_string())];
                 metrics.push(Metric {
                     name: "temperature".to_string(),
                     value: temperature as f64,
