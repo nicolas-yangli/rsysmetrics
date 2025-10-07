@@ -2,6 +2,8 @@
 
 `rsysmetrics` is a system metrics collection agent written in Rust. It gathers system metrics (currently CPU, memory, disk, GPU, network, system, and temperature) and exports them to InfluxDB. The agent is designed to be lightweight and configurable.
 
+![Grafana Dashboard](/contrib/grafana-dashboard.png)
+
 ## Building
 
 ### Generic
